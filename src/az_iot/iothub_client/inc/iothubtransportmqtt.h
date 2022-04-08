@@ -4,13 +4,13 @@
 #ifndef IOTHUBTRANSPORTMQTT_H
 #define IOTHUBTRANSPORTMQTT_H
 
-#include "iothub_transport_ll.h"
+#include "az_iot/iothub_client/inc/iothub_transport_ll.h"
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-	extern const TRANSPORT_PROVIDER* MQTT_Protocol(void);
+    extern const TRANSPORT_PROVIDER* MQTT_Protocol(void);
 
 #ifdef __cplusplus
 }

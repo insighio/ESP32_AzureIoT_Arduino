@@ -8,7 +8,7 @@
 #include <stdbool.h>
 #include "az_iot/c-utility/inc/azure_c_shared_utility/optionhandler.h"
 #include "az_iot/c-utility/inc/azure_c_shared_utility/umock_c_prod.h"
-#include "iothub_client_ll.h"
+#include "az_iot/iothub_client/inc/iothub_client_ll.h"
 
 #ifdef __cplusplus
 extern "C"

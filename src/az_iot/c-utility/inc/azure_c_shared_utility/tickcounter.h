@@ -5,19 +5,24 @@
 #define TICKCOUNTER_H
 
 #ifdef __cplusplus
-extern "C" {
+#include <cstdint>
+#else
+#include <stdint.h>
+#endif
+
+#include "az_iot/c-utility/inc/azure_c_shared_utility/umock_c_prod.h"
+
+#ifdef __cplusplus
+extern "C"
+{
 #endif /* __cplusplus */
 
-#include <stdint.h>
+    typedef uint_fast64_t tickcounter_ms_t; // Use 64-bit because of 32-bit is going to roll over back to zero after roughly 49.7 days that is not good for IoT devices which need keep running for months
+    typedef struct TICK_COUNTER_INSTANCE_TAG *TICK_COUNTER_HANDLE;
 
-#include "umock_c_prod.h"
-
-    typedef uint_fast32_t tickcounter_ms_t;
-    typedef struct TICK_COUNTER_INSTANCE_TAG* TICK_COUNTER_HANDLE;
-    
     MOCKABLE_FUNCTION(, TICK_COUNTER_HANDLE, tickcounter_create);
     MOCKABLE_FUNCTION(, void, tickcounter_destroy, TICK_COUNTER_HANDLE, tick_counter);
-    MOCKABLE_FUNCTION(, int, tickcounter_get_current_ms, TICK_COUNTER_HANDLE, tick_counter, tickcounter_ms_t*, current_ms);
+    MOCKABLE_FUNCTION(, int, tickcounter_get_current_ms, TICK_COUNTER_HANDLE, tick_counter, tickcounter_ms_t *, current_ms);
 
 #ifdef __cplusplus
 }

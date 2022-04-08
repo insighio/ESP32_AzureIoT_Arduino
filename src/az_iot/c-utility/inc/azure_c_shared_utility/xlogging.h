@@ -4,8 +4,20 @@
 #ifndef XLOGGING_H
 #define XLOGGING_H
 
-#include "agenttime.h"
-#include "optimize_size.h"
+#ifdef __cplusplus
+#include <cstdlib>
+#else
+#include <stdlib.h>
+#endif
+
+#include "az_iot/c-utility/inc/azure_c_shared_utility/macro_utils.h"
+
+#include "az_iot/c-utility/inc/azure_c_shared_utility/agenttime.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/optimize_size.h"
+
+#ifdef LOGERROR_CAPTURES_STACK_TRACES
+#include "logging_stacktrace.h"
+#endif
 
 #if defined(ESP8266_RTOS)
 #include "c_types.h"
@@ -16,10 +28,18 @@
 #endif
 
 #ifdef __cplusplus
+/* Some compilers do not want to play by the standard, specifically ARM CC */
+#ifdef MBED_BUILD_TIMESTAMP
+#include <stdio.h>
+#else
 #include <cstdio>
-extern "C" {
+#endif
 #else
 #include <stdio.h>
+#endif /* __cplusplus */
+
+#ifdef __cplusplus
+extern "C" {
 #endif /* __cplusplus */
 
 #ifdef TIZENRT
@@ -42,6 +62,9 @@ typedef enum LOG_CATEGORY_TAG
 typedef void(*LOGGER_LOG)(LOG_CATEGORY log_category, const char* file, const char* func, int line, unsigned int options, const char* format, ...);
 typedef void(*LOGGER_LOG_GETLASTERROR)(const char* file, const char* func, int line, const char* format, ...);
 
+#define TEMP_BUFFER_SIZE 1024
+#define MESSAGE_BUFFER_SIZE 260
+
 #define LOG_NONE 0x00
 #define LOG_LINE 0x01
 
@@ -49,7 +72,9 @@ typedef void(*LOGGER_LOG_GETLASTERROR)(const char* file, const char* func, int l
 #ifdef NO_LOGGING
 #define LOG(...)
 #define LogInfo(...)
+#define LogBinary(...)
 #define LogError(...)
+#define LogLastError(...)
 #define xlogging_get_log_function() NULL
 #define xlogging_set_log_function(...)
 #define LogErrorWinHTTPWithGetLastErrorAsString(...)
@@ -57,6 +82,7 @@ typedef void(*LOGGER_LOG_GETLASTERROR)(const char* file, const char* func, int l
 #elif (defined MINIMAL_LOGERROR)
 #define LOG(...)
 #define LogInfo(...)
+#define LogBinary(...)
 #define LogError(...) printf("error %s: line %d\n",__FILE__,__LINE__);
 #define xlogging_get_log_function() NULL
 #define xlogging_set_log_function(...)
@@ -69,7 +95,7 @@ typedef void(*LOGGER_LOG_GETLASTERROR)(const char* file, const char* func, int l
         printf(flash_str, ##__VA_ARGS__);   \
         printf("\n");\
     } while((void)0,0)
-    
+
 #define LogError LogInfo
 #define LOG(log_category, log_options, FORMAT, ...)  { \
         static const char flash_str[] ICACHE_RODATA_ATTR STORE_ATTR = (FORMAT); \
@@ -77,39 +103,79 @@ typedef void(*LOGGER_LOG_GETLASTERROR)(const char* file, const char* func, int l
         printf("\r\n"); \
 }
 
+#else /* NOT ESP8266_RTOS */
 
-#elif defined(ARDUINO_ARCH_ESP8266)
-/*
-The ESP8266 compiler doesn't do a good job compiling this code; it doesn't understand that the 'format' is
-a 'const char*' and moves it to RAM as a global variable, increasing the .bss size. So we create a
-specific LogInfo that explicitly pins the 'format' on the PROGMEM (flash) using a _localFORMAT variable
-with the macro PSTR.
-#define ICACHE_FLASH_ATTR   __attribute__((section(".irom0.text")))
-#define PROGMEM     ICACHE_RODATA_ATTR
-#define PSTR(s) (__extension__({static const char __c[] PROGMEM = (s); &__c[0];}))
-const char* __localFORMAT = PSTR(FORMAT);
-On the other hand, vsprintf does not support the pinned 'format' and os_printf does not work with va_list,
-so we compacted the log in the macro LogInfo.
-*/
-#define LOG(log_category, log_options, FORMAT, ...) { \
-        const char* __localFORMAT = PSTR(FORMAT); \
-        os_printf(__localFORMAT, ##__VA_ARGS__); \
-        os_printf("\r\n"); \
-}
-
-#define LogInfo(FORMAT, ...) { \
-        const char* __localFORMAT = PSTR(FORMAT); \
-        os_printf(__localFORMAT, ##__VA_ARGS__); \
-        os_printf("\r\n"); \
-}
-#define LogError LogInfo
-
-#else /* !ARDUINO_ARCH_ESP8266 */
-
+// In order to make sure that the compiler evaluates the arguments and issues an error if they do not conform to printf
+// specifications, we call printf with the format and __VA_ARGS__. Since C && operator is shortcircuiting no actual runtime call to printf is performed.
 #if defined _MSC_VER
-#define LOG(log_category, log_options, format, ...) { LOGGER_LOG l = xlogging_get_log_function(); if (l != NULL) l(log_category, __FILE__, FUNC_NAME, __LINE__, log_options, format, __VA_ARGS__); }
+#ifndef LOGERROR_CAPTURES_STACK_TRACES
+// ignore warning C4127 
+#define LOG(log_category, log_options, format, ...) \
+{ \
+    (void)(0 && printf(format, __VA_ARGS__)); \
+    { \
+        LOGGER_LOG l = xlogging_get_log_function(); \
+        if (l != NULL) \
+        { \
+            l(log_category, __FILE__, FUNC_NAME, __LINE__, log_options, format, __VA_ARGS__); \
+        } \
+    } \
+}
+#else /*LOGERROR_CAPTURES_STACK_TRACES is defined*/ 
+#define STACK_PRINT_FORMAT "\nStack:\n%s"
+
+#define LOG(log_category, log_options, format, ...) MU_C3(LOG,_,log_category)(log_category, log_options, format, __VA_ARGS__)
+
+#define LOG_AZ_LOG_ERROR(log_category, log_options, format, ...)                                                                                                        \
+{                                                                                                                                                                       \
+    (void)(0 && printf(format, __VA_ARGS__));                                                                                                                           \
+    {                                                                                                                                                                   \
+        LOGGER_LOG l = xlogging_get_log_function();                                                                                                                     \
+        if (l != NULL)                                                                                                                                                  \
+        {                                                                                                                                                               \
+            char* stackAsString = getStackAsString();                                                                                                                   \
+            if (stackAsString == NULL)                                                                                                                                  \
+            {                                                                                                                                                           \
+                l(log_category, __FILE__, FUNC_NAME, __LINE__, log_options, format, __VA_ARGS__);                                                                       \
+            }                                                                                                                                                           \
+            else                                                                                                                                                        \
+            {                                                                                                                                                           \
+                size_t formatSize = strlen(format);                                                                                                                     \
+                char* formatWithStack = (char*)logging_malloc(formatSize + sizeof("STACK_PRINT_FORMAT"));                                                               \
+                if (formatWithStack == NULL)                                                                                                                            \
+                {                                                                                                                                                       \
+                    l(log_category, __FILE__, FUNC_NAME, __LINE__, log_options, format, __VA_ARGS__);                                                                   \
+                }                                                                                                                                                       \
+                else                                                                                                                                                    \
+                {                                                                                                                                                       \
+                    (void)memcpy(formatWithStack, format, formatSize);                                                                                                  \
+                    (void)memcpy(formatWithStack + formatSize, STACK_PRINT_FORMAT, sizeof(STACK_PRINT_FORMAT));                                                         \
+                    l(log_category, __FILE__, FUNC_NAME, __LINE__, log_options, formatWithStack, __VA_ARGS__, stackAsString);                                           \
+                    logging_free(formatWithStack);                                                                                                                      \
+                }                                                                                                                                                       \
+                logging_free(stackAsString);                                                                                                                            \
+            }                                                                                                                                                           \
+        }                                                                                                                                                               \
+    }                                                                                                                                                                   \
+}
+
+#define LOG_AZ_LOG_TRACE LOG_AZ_LOG_INFO
+
+#define LOG_AZ_LOG_INFO(log_category, log_options, format, ...)                                                                                                         \
+{                                                                                                                                                                       \
+    (void)(0 && printf(format, __VA_ARGS__));                                                                                                                           \
+    {                                                                                                                                                                   \
+        LOGGER_LOG l = xlogging_get_log_function();                                                                                                                     \
+        if (l != NULL)                                                                                                                                                  \
+        {                                                                                                                                                               \
+            l(log_category, __FILE__, FUNC_NAME, __LINE__, log_options, format, __VA_ARGS__);                                                                           \
+        }                                                                                                                                                               \
+    }                                                                                                                                                                   \
+}
+
+#endif /*LOGERROR_CAPTURES_STACK_TRACES*/
 #else
-#define LOG(log_category, log_options, format, ...) { LOGGER_LOG l = xlogging_get_log_function(); if (l != NULL) l(log_category, __FILE__, FUNC_NAME, __LINE__, log_options, format, ##__VA_ARGS__); } 
+#define LOG(log_category, log_options, format, ...) { (void)(0 && printf(format, ##__VA_ARGS__)); { LOGGER_LOG l = xlogging_get_log_function(); if (l != NULL) l(log_category, __FILE__, FUNC_NAME, __LINE__, log_options, format, ##__VA_ARGS__); } }
 #endif
 
 #if defined _MSC_VER
@@ -118,70 +184,42 @@ so we compacted the log in the macro LogInfo.
 #define LogInfo(FORMAT, ...) do{LOG(AZ_LOG_INFO, LOG_LINE, FORMAT, ##__VA_ARGS__); }while((void)0,0)
 #endif
 
+#ifdef WIN32
+extern void xlogging_LogErrorWinHTTPWithGetLastErrorAsStringFormatter(int errorMessageID);
+#endif
+
 #if defined _MSC_VER
 
-#if !defined(WINCE)
 extern void xlogging_set_log_function_GetLastError(LOGGER_LOG_GETLASTERROR log_function);
 extern LOGGER_LOG_GETLASTERROR xlogging_get_log_function_GetLastError(void);
 #define LogLastError(FORMAT, ...) do{ LOGGER_LOG_GETLASTERROR l = xlogging_get_log_function_GetLastError(); if(l!=NULL) l(__FILE__, FUNC_NAME, __LINE__, FORMAT, __VA_ARGS__); }while((void)0,0)
-#endif
 
 #define LogError(FORMAT, ...) do{ LOG(AZ_LOG_ERROR, LOG_LINE, FORMAT, __VA_ARGS__); }while((void)0,0)
-#define TEMP_BUFFER_SIZE 1024
-#define MESSAGE_BUFFER_SIZE 260
 #define LogErrorWinHTTPWithGetLastErrorAsString(FORMAT, ...) do { \
-                DWORD errorMessageID = GetLastError(); \
-                char messageBuffer[MESSAGE_BUFFER_SIZE]; \
+                int errorMessageID = GetLastError(); \
                 LogError(FORMAT, __VA_ARGS__); \
-                if (errorMessageID == 0) \
-                {\
-                    LogError("GetLastError() returned 0. Make sure you are calling this right after the code that failed. "); \
-                } \
-                else\
-                {\
-                    int size = FormatMessage(FORMAT_MESSAGE_FROM_HMODULE | FORMAT_MESSAGE_IGNORE_INSERTS, \
-                        GetModuleHandle("WinHttp"), errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), messageBuffer, MESSAGE_BUFFER_SIZE, NULL); \
-                    if (size == 0)\
-                    {\
-                        size = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), messageBuffer, MESSAGE_BUFFER_SIZE, NULL); \
-                        if (size == 0)\
-                        {\
-                            LogError("GetLastError Code: %d. ", errorMessageID); \
-                        }\
-                        else\
-                        {\
-                            LogError("GetLastError: %s.", messageBuffer); \
-                        }\
-                    }\
-                    else\
-                    {\
-                        LogError("GetLastError: %s.", messageBuffer); \
-                    }\
-                }\
+                xlogging_LogErrorWinHTTPWithGetLastErrorAsStringFormatter(errorMessageID); \
             } while((void)0,0)
-#else
+#else // _MSC_VER
 #define LogError(FORMAT, ...) do{ LOG(AZ_LOG_ERROR, LOG_LINE, FORMAT, ##__VA_ARGS__); }while((void)0,0)
-#endif
+
+#ifdef WIN32
+// Included when compiling on Windows but not with MSVC, e.g. with MinGW.
+#define LogErrorWinHTTPWithGetLastErrorAsString(FORMAT, ...) do { \
+                int errorMessageID = GetLastError(); \
+                LogError(FORMAT, ##__VA_ARGS__); \
+                xlogging_LogErrorWinHTTPWithGetLastErrorAsStringFormatter(errorMessageID); \
+            } while((void)0,0)
+#endif // WIN32
+
+#endif // _MSC_VER
+
+extern void LogBinary(const char* comment, const void* data, size_t size);
 
 extern void xlogging_set_log_function(LOGGER_LOG log_function);
 extern LOGGER_LOG xlogging_get_log_function(void);
 
-#endif /* ARDUINO_ARCH_ESP8266 */
-
-
-    /**
-     * @brief   Print the memory content byte pre byte in hexadecimal and as a char it the byte correspond to any printable ASCII chars.
-     *
-     *    This function prints the 'size' bytes in the 'buf' to the log. It will print in portions of 16 bytes, 
-     *         and will print the byte as a hexadecimal value, and, it is a printable, this function will print 
-     *         the correspondent ASCII character.
-     *    Non printable characters will shows as a single '.'. 
-     *    For this function, printable characters are all characters between ' ' (0x20) and '~' (0x7E).
-     *
-     * @param   buf  Pointer to the memory address with the buffer to print.
-     * @param   size Number of bytes to print.
-     */
-    extern void xlogging_dump_buffer(const void* buf, size_t size);
+#endif /* NOT ESP8266_RTOS */
 
 #ifdef __cplusplus
 }   // extern "C"

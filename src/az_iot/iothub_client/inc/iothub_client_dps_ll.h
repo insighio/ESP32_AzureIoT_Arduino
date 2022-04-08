@@ -15,7 +15,7 @@
 #include "az_iot/c-utility/inc/azure_hub_modules/iothub_device_auth.h"
 #endif
 
-#include "iothub_client_ll.h"
+#include "az_iot/iothub_client/inc/iothub_client_ll.h"
 
 #ifdef __cplusplus
 extern "C"

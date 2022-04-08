@@ -4,20 +4,19 @@
 #ifndef OPTIONHANDLER_H
 #define OPTIONHANDLER_H
 
-#include "macro_utils.h"
-
-#define OPTIONHANDLER_RESULT_VALUES \
-OPTIONHANDLER_OK, \
-OPTIONHANDLER_ERROR, \
-OPTIONHANDLER_INVALIDARG
-
-DEFINE_ENUM(OPTIONHANDLER_RESULT, OPTIONHANDLER_RESULT_VALUES)
+#include "az_iot/c-utility/inc/azure_c_shared_utility/macro_utils.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/umock_c_prod.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#include "umock_c_prod.h"
+#define OPTIONHANDLER_RESULT_VALUES \
+    OPTIONHANDLER_OK, \
+    OPTIONHANDLER_ERROR, \
+    OPTIONHANDLER_INVALIDARG
+
+DEFINE_ENUM(OPTIONHANDLER_RESULT, OPTIONHANDLER_RESULT_VALUES)
 
 typedef struct OPTIONHANDLER_HANDLE_DATA_TAG* OPTIONHANDLER_HANDLE;
 

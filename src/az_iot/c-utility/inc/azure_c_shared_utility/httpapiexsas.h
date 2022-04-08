@@ -4,20 +4,21 @@
 #ifndef HTTPAPIEX_SAS_H
 #define HTTPAPIEX_SAS_H
 
-#include "strings.h"
-#include "buffer_.h"
-#include "httpheaders.h"
-#include "httpapiex.h"
-#include "umock_c_prod.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/az_strings.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/buffer_.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/httpheaders.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/httpapiex.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/umock_c_prod.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-
+    
 typedef struct HTTPAPIEX_SAS_STATE_TAG* HTTPAPIEX_SAS_HANDLE;
 
 MOCKABLE_FUNCTION(, HTTPAPIEX_SAS_HANDLE, HTTPAPIEX_SAS_Create, STRING_HANDLE, key, STRING_HANDLE, uriResource, STRING_HANDLE, keyName);
+
+MOCKABLE_FUNCTION(, HTTPAPIEX_SAS_HANDLE, HTTPAPIEX_SAS_Create_From_String, const char*, key, const char*, uriResource, const char*, keyName);
 
 MOCKABLE_FUNCTION(, void, HTTPAPIEX_SAS_Destroy, HTTPAPIEX_SAS_HANDLE, handle);
 

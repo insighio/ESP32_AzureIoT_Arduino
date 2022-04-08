@@ -4,16 +4,19 @@
 #ifndef XIO_H
 #define XIO_H
 
-#include "optionhandler.h"
-
-#include "umock_c_prod.h"
-#include "macro_utils.h"
-
 #ifdef __cplusplus
 #include <cstddef>
-extern "C" {
 #else
 #include <stddef.h>
+#endif /* __cplusplus */
+
+#include "az_iot/c-utility/inc/azure_c_shared_utility/optionhandler.h"
+
+#include "az_iot/c-utility/inc/azure_c_shared_utility/umock_c_prod.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/macro_utils.h"
+
+#ifdef __cplusplus
+extern "C" {
 #endif /* __cplusplus */
 
 typedef struct XIO_INSTANCE_TAG* XIO_HANDLE;

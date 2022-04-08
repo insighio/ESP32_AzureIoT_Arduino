@@ -10,9 +10,9 @@ typedef struct TRANSPORT_HANDLE_DATA_TAG* TRANSPORT_HANDLE;
 #include "az_iot/c-utility/inc/azure_c_shared_utility/lock.h"
 #include "az_iot/c-utility/inc/azure_c_shared_utility/crt_abstractions.h"
 
-#include "iothub_client_ll.h"
-#include "iothub_client_private.h"
-#include "iothub_transport_ll.h"
+#include "az_iot/iothub_client/inc/iothub_client_ll.h"
+#include "az_iot/iothub_client/inc/internal/iothub_client_private.h"
+#include "az_iot/iothub_client/inc/iothub_transport_ll.h"
 
 #ifndef IOTHUB_CLIENT_INSTANCE_TYPE
 typedef struct IOTHUB_CLIENT_INSTANCE_TAG* IOTHUB_CLIENT_HANDLE;

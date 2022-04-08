@@ -4,15 +4,15 @@
 #ifndef TLSIO_OPENSSL_H
 #define TLSIO_OPENSSL_H
 
+#include "az_iot/c-utility/inc/azure_c_shared_utility/xio.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/umock_c_prod.h"
+
 #ifdef __cplusplus
 extern "C" {
 #include <cstddef>
 #else
 #include <stddef.h>
 #endif /* __cplusplus */
-
-#include "xio.h"
-#include "umock_c_prod.h"
 
 MOCKABLE_FUNCTION(, int, tlsio_openssl_init);
 MOCKABLE_FUNCTION(, void, tlsio_openssl_deinit);

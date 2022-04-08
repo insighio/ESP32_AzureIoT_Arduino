@@ -4,17 +4,21 @@
 #ifndef CONSTBUFFER_H
 #define CONSTBUFFER_H
 
-#include "buffer_.h"
-
 #ifdef __cplusplus
 #include <cstddef>
-extern "C"
-{
 #else
 #include <stddef.h>
+#include <stdbool.h>
 #endif
 
-#include "umock_c_prod.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/buffer_.h"
+
+#include "az_iot/c-utility/inc/azure_c_shared_utility/umock_c_prod.h"
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 /*this is the handle*/
 typedef struct CONSTBUFFER_HANDLE_DATA_TAG* CONSTBUFFER_HANDLE;
@@ -26,17 +30,28 @@ typedef struct CONSTBUFFER_TAG
     size_t size;
 } CONSTBUFFER;
 
-/*this creates a new constbuffer from a memory area*/
+typedef void(*CONSTBUFFER_CUSTOM_FREE_FUNC)(void* context);
+
+
+    /*this creates a new constbuffer from a memory area*/
 MOCKABLE_FUNCTION(, CONSTBUFFER_HANDLE, CONSTBUFFER_Create, const unsigned char*, source, size_t, size);
 
-/*this creates a new constbuffer from an existing BUFFER_HANDLE*/
+    /*this creates a new constbuffer from an existing BUFFER_HANDLE*/
 MOCKABLE_FUNCTION(, CONSTBUFFER_HANDLE, CONSTBUFFER_CreateFromBuffer, BUFFER_HANDLE, buffer);
 
-MOCKABLE_FUNCTION(, CONSTBUFFER_HANDLE, CONSTBUFFER_Clone, CONSTBUFFER_HANDLE, constbufferHandle);
+MOCKABLE_FUNCTION(, CONSTBUFFER_HANDLE, CONSTBUFFER_CreateWithMoveMemory, unsigned char*, source, size_t, size);
+
+MOCKABLE_FUNCTION(, CONSTBUFFER_HANDLE, CONSTBUFFER_CreateWithCustomFree, const unsigned char*, source, size_t, size, CONSTBUFFER_CUSTOM_FREE_FUNC, customFreeFunc, void*, customFreeFuncContext);
+
+MOCKABLE_FUNCTION(, CONSTBUFFER_HANDLE, CONSTBUFFER_CreateFromOffsetAndSize, CONSTBUFFER_HANDLE, handle, size_t, offset, size_t, size);
+
+MOCKABLE_FUNCTION(, void, CONSTBUFFER_IncRef, CONSTBUFFER_HANDLE, constbufferHandle);
+
+MOCKABLE_FUNCTION(, void, CONSTBUFFER_DecRef, CONSTBUFFER_HANDLE, constbufferHandle);
 
 MOCKABLE_FUNCTION(, const CONSTBUFFER*, CONSTBUFFER_GetContent, CONSTBUFFER_HANDLE, constbufferHandle);
 
-MOCKABLE_FUNCTION(, void, CONSTBUFFER_Destroy, CONSTBUFFER_HANDLE, constbufferHandle);
+MOCKABLE_FUNCTION(, bool, CONSTBUFFER_HANDLE_contain_same, CONSTBUFFER_HANDLE, left, CONSTBUFFER_HANDLE, right);
 
 #ifdef __cplusplus
 }

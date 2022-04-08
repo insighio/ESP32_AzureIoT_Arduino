@@ -2,7 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 
-/*this header contains macros for ref_counting a variable. 
+/*this header contains macros for ref_counting a variable.
 
 There are no upper bound checks related to uint32_t overflow because we expect that bigger issues are in
 the system when more than 4 billion references exist to the same variable. In the case when such an overflow
@@ -17,28 +17,20 @@ will interact with deallocated memory / resources resulting in an undefined beha
 #ifdef __cplusplus
 #include <cstdlib>
 #include <cstdint>
-extern "C" 
-{
 #else
 #include <stdlib.h>
 #include <stdint.h>
 #endif
 
-#include "gballoc.h"
-#include "macro_utils.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/gballoc.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/macro_utils.h"
 
-#if defined(__STDC_VERSION__) && (__STDC_VERSION__ == 201112) && (__STDC_NO_ATOMICS__!=1)
-#define REFCOUNT_USE_STD_ATOMIC 1
-#endif
+// Include the platform-specific file that defines atomic functionality
+#include "az_iot/c-utility/pal/generic/refcount_os.h"
 
-#if defined(ARDUINO_ARCH_SAMD)
-#undef  REFCOUNT_USE_STD_ATOMIC
-#endif
-
-#if defined(FREERTOS_ARCH_ESP8266)
-#undef  REFCOUNT_USE_STD_ATOMIC  
-#define REFCOUNT_ATOMIC_DONTCARE 1
-#undef __GNUC__    
+#ifdef __cplusplus
+extern "C"
+{
 #endif
 
 #define REFCOUNT_TYPE(type) \
@@ -48,89 +40,81 @@ struct C2(C2(REFCOUNT_, type), _TAG)
 C2(REFCOUNT_, type)
 
 #define REFCOUNT_TYPE_DECLARE_CREATE(type) C2(REFCOUNT_SHORT_TYPE(type), _Create)
+#define REFCOUNT_TYPE_DECLARE_CREATE_WITH_EXTRA_SIZE(type) C2(REFCOUNT_SHORT_TYPE(type), _Create_With_Extra_Size)
 #define REFCOUNT_TYPE_CREATE(type) C2(REFCOUNT_SHORT_TYPE(type), _Create)()
+#define REFCOUNT_TYPE_CREATE_WITH_EXTRA_SIZE(type, size) C2(REFCOUNT_SHORT_TYPE(type), _Create_With_Extra_Size)(size)
+#define REFCOUNT_TYPE_DECLARE_DESTROY(type) C2(REFCOUNT_SHORT_TYPE(type), _Destroy)
+#define REFCOUNT_TYPE_DESTROY(type, var) C2(REFCOUNT_SHORT_TYPE(type), _Destroy)(var)
 
 /*this introduces a new refcount'd type based on another type */
 /*and an initializer for that new type that also sets the ref count to 1. The type must not have a flexible array*/
 /*the newly allocated memory shall be free'd by free()*/
-/*and the ref counting is handled internally by the type in the _Create/ _Clone /_Destroy functions */
+/*and the ref counting is handled internally by the type in the _Create/ _Create_With_Extra_Size /_Clone /_Destroy functions */
 
-#if defined(REFCOUNT_USE_STD_ATOMIC)
-#define COUNT_TYPE _Atomic uint32_t
-#elif defined(WIN32)
-#define COUNT_TYPE LONG
-#else
-#define COUNT_TYPE uint32_t
-#endif
+/* Codes_SRS_REFCOUNT_01_005: [ REFCOUNT_TYPE_CREATE_WITH_EXTRA_SIZE shall allocate memory for the type that is ref counted (type) plus extra memory enough to hold size bytes. ]*/
+/* Codes_SRS_REFCOUNT_01_006: [ On success it shall return a non-NULL handle to the allocated ref counted type type. ]*/
+/* Codes_SRS_REFCOUNT_01_007: [ If any error occurs, REFCOUNT_TYPE_CREATE_WITH_EXTRA_SIZE shall return NULL. ]*/
+#define DEFINE_CREATE_WITH_EXTRA_SIZE(type) \
+static type* REFCOUNT_TYPE_DECLARE_CREATE_WITH_EXTRA_SIZE(type)(size_t size) \
+{ \
+    REFCOUNT_TYPE(type)* ref_counted = (REFCOUNT_TYPE(type)*)malloc(sizeof(REFCOUNT_TYPE(type)) + size); \
+    type* result; \
+    if (ref_counted == NULL) \
+    { \
+        result = NULL; \
+    } \
+    else \
+    { \
+        result = &ref_counted->counted; \
+        INIT_REF(type, result); \
+    } \
+    return result; \
+} \
 
-#define DEFINE_REFCOUNT_TYPE(type)                                                                   \
-REFCOUNT_TYPE(type)                                                                                  \
-{                                                                                                    \
-    type counted;                                                                                    \
-    COUNT_TYPE count;                                                                                  \
-};                                                                                                   \
-static type* REFCOUNT_TYPE_DECLARE_CREATE(type) (void)                                               \
-{                                                                                                    \
-    REFCOUNT_TYPE(type)* result = (REFCOUNT_TYPE(type)*)malloc(sizeof(REFCOUNT_TYPE(type)));         \
-    if (result != NULL)                                                                              \
-    {                                                                                                \
-        result->count = 1;                                                                           \
-    }                                                                                                \
-    return (type*)result;                                                                            \
-}                                                                                                    \
+/* Codes_SRS_REFCOUNT_01_002: [ REFCOUNT_TYPE_CREATE shall allocate memory for the type that is ref counted. ]*/
+/* Codes_SRS_REFCOUNT_01_003: [ On success it shall return a non-NULL handle to the allocated ref counted type type. ]*/
+/* Codes_SRS_REFCOUNT_01_004: [ If any error occurs, REFCOUNT_TYPE_CREATE shall return NULL. ]*/
+#define DEFINE_CREATE(type) \
+static type* REFCOUNT_TYPE_DECLARE_CREATE(type) (void) \
+{ \
+    return REFCOUNT_TYPE_DECLARE_CREATE_WITH_EXTRA_SIZE(type)(0); \
+} \
 
-/*the following macros increment/decrement a ref count in an atomic way, depending on the platform*/
-/*The following mechanisms are considered in this order
-C11 
-    - will result in #include <stdatomic.h> 
-    - will use atomic_fetch_add/sub; 
-    - about the return value: "Atomically, the value pointed to by object immediately before the effects"
-windows 
-    - will result in #include "windows.h"
-    - will use InterlockedIncrement/InterlockedDecrement; 
-    - about the return value: https://msdn.microsoft.com/en-us/library/windows/desktop/ms683580(v=vs.85).aspx "The function returns the resulting decremented value"
-gcc
-    - will result in no include (for gcc these are intrinsics build in)
-    - will use __sync_fetch_and_add/sub
-    - about the return value: "... returns the value that had previously been in memory." (https://gcc.gnu.org/onlinedocs/gcc-4.4.3/gcc/Atomic-Builtins.html#Atomic-Builtins)
-other cases
-    - if REFCOUNT_ATOMIC_DONTCARE is defined, then 
-        will result in ++/-- used for increment/decrement.
-    - if it is not defined, then error out
-       
-It seems windows is "one off" because it returns the value "after" the decrement, as opposed to C11 standard and gcc that return the value "before". 
-The macro DEC_RETURN_ZERO will be "0" on windows, and "1" on the other cases.
-*/
+/* Codes_SRS_REFCOUNT_01_008: [ REFCOUNT_TYPE_DESTROY shall free the memory allocated by REFCOUNT_TYPE_CREATE or REFCOUNT_TYPE_CREATE_WITH_EXTRA_SIZE. ]*/
+/* Codes_SRS_REFCOUNT_01_009: [ If counted_type is NULL, REFCOUNT_TYPE_DESTROY shall return. ]*/
+#define DEFINE_DESTROY(type) \
+static void REFCOUNT_TYPE_DECLARE_DESTROY(type)(type* counted_type) \
+{ \
+    void* ref_counted = (void*)((unsigned char*)counted_type - offsetof(REFCOUNT_TYPE(type), counted)); \
+    free(ref_counted); \
+}
 
-/*if macro DEC_REF returns DEC_RETURN_ZERO that means the ref count has reached zero.*/
-#if defined(REFCOUNT_USE_STD_ATOMIC)
-#include <stdatomic.h>
-#define DEC_RETURN_ZERO (1)
-#define INC_REF(type, var) atomic_fetch_add((&((REFCOUNT_TYPE(type)*)var)->count), 1)
-#define DEC_REF(type, var) atomic_fetch_sub((&((REFCOUNT_TYPE(type)*)var)->count), 1)
+#define DEFINE_REFCOUNT_TYPE(type) \
+REFCOUNT_TYPE(type) \
+{ \
+    COUNT_TYPE count; \
+    type counted; \
+}; \
+DEFINE_CREATE_WITH_EXTRA_SIZE(type) \
+DEFINE_CREATE(type) \
+DEFINE_DESTROY(type) \
 
-#elif defined(WIN32)
-#include "windows.h"
-#define DEC_RETURN_ZERO (0)
-#define INC_REF(type, var) InterlockedIncrement(&(((REFCOUNT_TYPE(type)*)var)->count))
-#define DEC_REF(type, var) InterlockedDecrement(&(((REFCOUNT_TYPE(type)*)var)->count))
+#ifndef DEC_RETURN_ZERO
+#error refcount_os.h does not define DEC_RETURN_ZERO
+#endif // !DEC_RETURN_ZERO
+#ifndef INC_REF_VAR
+#error refcount_os.h does not define INC_REF_VAR
+#endif // !INC_REF
+#ifndef DEC_REF_VAR
+#error refcount_os.h does not define DEC_REF_VAR
+#endif // !DEC_REF
+#ifndef INIT_REF_VAR
+#error refcount_os.h does not define INIT_REF_VAR
+#endif // !INIT_REF
 
-#elif defined(__GNUC__)
-#define DEC_RETURN_ZERO (0)
-#define INC_REF(type, var) __sync_add_and_fetch((&((REFCOUNT_TYPE(type)*)var)->count), 1)
-#define DEC_REF(type, var) __sync_sub_and_fetch((&((REFCOUNT_TYPE(type)*)var)->count), 1)
-
-#else
-#if defined(REFCOUNT_ATOMIC_DONTCARE)
-#define DEC_RETURN_ZERO (0)
-#define INC_REF(type, var) ++((((REFCOUNT_TYPE(type)*)var)->count))
-#define DEC_REF(type, var) --((((REFCOUNT_TYPE(type)*)var)->count))
-#else
-#error do not know how to atomically increment and decrement a uint32_t :(. Platform support needs to be extended to your platform.
-#endif /*defined(REFCOUNT_ATOMIC_DONTCARE)*/
-#endif
-
-
+#define INC_REF(type, var) INC_REF_VAR(((REFCOUNT_TYPE(type)*)((unsigned char*)var - offsetof(REFCOUNT_TYPE(type), counted)))->count)
+#define DEC_REF(type, var) DEC_REF_VAR(((REFCOUNT_TYPE(type)*)((unsigned char*)var - offsetof(REFCOUNT_TYPE(type), counted)))->count)
+#define INIT_REF(type, var) INIT_REF_VAR(((REFCOUNT_TYPE(type)*)((unsigned char*)var - offsetof(REFCOUNT_TYPE(type), counted)))->count)
 
 #ifdef __cplusplus
 }

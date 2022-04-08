@@ -6,9 +6,9 @@
 
 // This file is OS-specific, and is identified by setting include directories
 // in the project
-#include "./inc/socket_async_os.h"
+#include "az_iot/c-utility/pal/inc/socket_async_os.h"
 
-#include "./inc/socket_async.h"
+#include "az_iot/c-utility/pal/inc/socket_async.h"
 #include "az_iot/c-utility/inc/azure_c_shared_utility/xlogging.h"
 
 
@@ -76,15 +76,15 @@ SOCKET_ASYNC_HANDLE socket_async_create(uint32_t serverIPv4, uint16_t port,
             setopt_return = 0;
         }
 
-        // NB: On full-sized (multi-process) systems it would be necessary to use the SO_REUSEADDR option to 
-        // grab the socket from any earlier (dying) invocations of the process and then deal with any 
+        // NB: On full-sized (multi-process) systems it would be necessary to use the SO_REUSEADDR option to
+        // grab the socket from any earlier (dying) invocations of the process and then deal with any
         // residual junk in the connection stream. This doesn't happen with embedded, so it doesn't need
         // to be defended against.
 
         if (!setopt_ok)
         {
             /* Codes_SRS_SOCKET_ASYNC_30_020: [ If socket option setting fails, socket_async_create shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. ]*/
-            // setsockopt has no real possibility of failing due to the way it's being used here, so there's no need 
+            // setsockopt has no real possibility of failing due to the way it's being used here, so there's no need
             // to spend memory trying to log the not-really-possible errno.
             LogError("setsockopt failed: %d", setopt_return);
             result = SOCKET_ASYNC_INVALID_SOCKET;
@@ -125,31 +125,32 @@ SOCKET_ASYNC_HANDLE socket_async_create(uint32_t serverIPv4, uint16_t port,
                 sock_addr.sin_port = htons(port);
 
                 connect_ret = connect(sock, (const struct sockaddr*)&sock_addr, sizeof(sock_addr));
-                if (connect_ret == -1)
-                {
-                    int sockErr = get_socket_errno(sock);
-                    if (sockErr != EINPROGRESS)
-                    {
-                        /* Codes_SRS_SOCKET_ASYNC_30_022: [ If socket connection fails, socket_async_create shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. ]*/
-                        LogError("Socket connect failed, not EINPROGRESS: %d", sockErr);
-                        result = SOCKET_ASYNC_INVALID_SOCKET;
-                    }
-                    else
-                    {
-                        // This is the normally expected code path for our non-blocking socket
-                        /* Codes_SRS_SOCKET_ASYNC_30_018: [ On success, socket_async_create shall return the created and configured SOCKET_ASYNC_HANDLE. ]*/
-                        result = sock;
-                    }
-                }
-                else
-                {
-                    /* Codes_SRS_SOCKET_ASYNC_30_018: [ On success, socket_async_create shall return the created and configured SOCKET_ASYNC_HANDLE. ]*/
-                    // This result would be a surprise because a non-blocking socket
-                    // returns EINPROGRESS. But it could happen if this thread got
-                    // blocked for a while by the system while the handshake proceeded,
-                    // or for a UDP socket.
-                    result = sock;
-                }
+                result = sock;
+                // if (connect_ret == -1)
+                // {
+                //     int sockErr = get_socket_errno(sock);
+                //     if (sockErr != EINPROGRESS)
+                //     {
+                //         /* Codes_SRS_SOCKET_ASYNC_30_022: [ If socket connection fails, socket_async_create shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. ]*/
+                //         LogError("Socket connect failed, not EINPROGRESS: %d", sockErr);
+                //         result = SOCKET_ASYNC_INVALID_SOCKET;
+                //     }
+                //     else
+                //     {
+                //         // This is the normally expected code path for our non-blocking socket
+                //         /* Codes_SRS_SOCKET_ASYNC_30_018: [ On success, socket_async_create shall return the created and configured SOCKET_ASYNC_HANDLE. ]*/
+                //         result = sock;
+                //     }
+                // }
+                // else
+                // {
+                //     /* Codes_SRS_SOCKET_ASYNC_30_018: [ On success, socket_async_create shall return the created and configured SOCKET_ASYNC_HANDLE. ]*/
+                //     // This result would be a surprise because a non-blocking socket
+                //     // returns EINPROGRESS. But it could happen if this thread got
+                //     // blocked for a while by the system while the handshake proceeded,
+                //     // or for a UDP socket.
+                //     result = sock;
+                // }
             }
         }
     }
@@ -164,7 +165,7 @@ int socket_async_is_create_complete(SOCKET_ASYNC_HANDLE sock, bool* is_complete)
     {
         /* Codes_SRS_SOCKET_ASYNC_30_026: [ If the is_complete parameter is NULL, socket_async_is_create_complete shall log an error and return FAILURE. ]*/
         LogError("is_complete is NULL");
-        result = __FAILURE__;
+        result = MU_FAILURE;
     }
     else
     {
@@ -186,7 +187,7 @@ int socket_async_is_create_complete(SOCKET_ASYNC_HANDLE sock, bool* is_complete)
         {
             /* Codes_SRS_SOCKET_ASYNC_30_028: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
             LogError("Socket select failed: %d", get_socket_errno(sock));
-            result = __FAILURE__;
+            result = MU_FAILURE;
         }
         else
         {
@@ -194,7 +195,7 @@ int socket_async_is_create_complete(SOCKET_ASYNC_HANDLE sock, bool* is_complete)
             {
                 /* Codes_SRS_SOCKET_ASYNC_30_028: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
                 LogError("Socket select errset non-empty: %d", get_socket_errno(sock));
-                result = __FAILURE__;
+                result = MU_FAILURE;
             }
             else if (FD_ISSET(sock, &writeset))
             {
@@ -222,7 +223,7 @@ int socket_async_send(SOCKET_ASYNC_HANDLE sock, const void* buffer, size_t size,
     {
         /* Codes_SRS_SOCKET_ASYNC_30_033: [ If the buffer parameter is NULL, socket_async_send shall log the error return FAILURE. ]*/
         LogError("buffer is NULL");
-        result = __FAILURE__;
+        result = MU_FAILURE;
     }
     else
     {
@@ -230,7 +231,7 @@ int socket_async_send(SOCKET_ASYNC_HANDLE sock, const void* buffer, size_t size,
         {
             /* Codes_SRS_SOCKET_ASYNC_30_034: [ If the sent_count parameter is NULL, socket_async_send shall log the error return FAILURE. ]*/
             LogError("sent_count is NULL");
-            result = __FAILURE__;
+            result = MU_FAILURE;
         }
         else
             if (size == 0)
@@ -258,7 +259,7 @@ int socket_async_send(SOCKET_ASYNC_HANDLE sock, const void* buffer, size_t size,
                         /* Codes_SRS_SOCKET_ASYNC_30_037: [ If socket_async_send fails unexpectedly, socket_async_send shall log the error return FAILURE. ]*/
                         // Something bad happened
                         LogError("Unexpected send error: %d", sock_err);
-                        result = __FAILURE__;
+                        result = MU_FAILURE;
                     }
                 }
                 else
@@ -280,7 +281,7 @@ int socket_async_receive(SOCKET_ASYNC_HANDLE sock, void* buffer, size_t size, si
     {
         /* Codes_SRS_SOCKET_ASYNC_30_052: [ If the buffer parameter is NULL, socket_async_receive shall log the error and return FAILURE. ]*/
         LogError("buffer is NULL");
-        result = __FAILURE__;
+        result = MU_FAILURE;
     }
     else
     {
@@ -288,14 +289,14 @@ int socket_async_receive(SOCKET_ASYNC_HANDLE sock, void* buffer, size_t size, si
         {
             /* Codes_SRS_SOCKET_ASYNC_30_053: [ If the received_count parameter is NULL, socket_async_receive shall log the error and return FAILURE. ]*/
             LogError("received_count is NULL");
-            result = __FAILURE__;
+            result = MU_FAILURE;
         }
         else
             if (size == 0)
             {
                 /* Codes_SRS_SOCKET_ASYNC_30_072: [ If the size parameter is 0, socket_async_receive shall log an error and return FAILURE. ]*/
                 LogError("size is 0");
-                result = __FAILURE__;
+                result = MU_FAILURE;
             }
             else
             {
@@ -315,7 +316,7 @@ int socket_async_receive(SOCKET_ASYNC_HANDLE sock, void* buffer, size_t size, si
                         /* Codes_SRS_SOCKET_ASYNC_30_056: [ If the underlying socket fails unexpectedly, socket_async_receive shall log the error and return FAILURE. ]*/
                         // Something bad happened
                         LogError("Unexpected recv error: %d", sock_err);
-                        result = __FAILURE__;
+                        result = MU_FAILURE;
                     }
                 }
                 else

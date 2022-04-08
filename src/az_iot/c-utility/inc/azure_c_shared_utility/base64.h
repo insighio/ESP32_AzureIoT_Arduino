@@ -9,8 +9,8 @@
 #ifndef BASE64_H
 #define BASE64_H
 
-#include "strings.h"
-#include "buffer_.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/az_strings.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/buffer_.h"
 
 #ifdef __cplusplus
 #include <cstddef>
@@ -19,7 +19,7 @@ extern "C" {
 #include <stddef.h>
 #endif
 
-#include "umock_c_prod.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/umock_c_prod.h"
 
 
 /**

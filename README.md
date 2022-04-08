@@ -10,6 +10,13 @@
 > 2. _[Azure IoT middleware for FreeRTOS](https://github.com/Azure-Samples/iot-middleware-freertos-samples) which uses ESP-IDF._
 <br>
 
+> 2022-04-08 Update:
+>
+> For reference and testing, the source code of _az_iot_ folder has been updated using the _az_iot_ folder of the official https://github.com/Azure/azure-iot-sdk-c using commit: cb8ef0535ebd06f81231be4c40b372ef17cd995e.
+> 
+> Using this source code, the project can be build for esp-idf v4.4 and Arduino Core 2.x
+> 
+
 # ESP32_AzureIoT - Azure IoT Hub library for esp32 devices in Arduino
 
 This library is a port of the 

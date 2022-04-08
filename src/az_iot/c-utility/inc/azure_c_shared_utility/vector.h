@@ -4,42 +4,42 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
-#include "crt_abstractions.h"
-#include "umock_c_prod.h"
-
 #ifdef __cplusplus
 #include <cstddef>
-#include <cstdbool>
-extern "C"
-{
 #else
 #include <stddef.h>
 #include <stdbool.h>
 #endif
 
-#include "vector_types.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/crt_abstractions.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/umock_c_prod.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/vector_types.h"
 
-/* creation */
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+    /* creation */
 MOCKABLE_FUNCTION(, VECTOR_HANDLE, VECTOR_create, size_t, elementSize);
 MOCKABLE_FUNCTION(, VECTOR_HANDLE, VECTOR_move, VECTOR_HANDLE, handle);
 MOCKABLE_FUNCTION(, void, VECTOR_destroy, VECTOR_HANDLE, handle);
 
-/* insertion */
+    /* insertion */
 MOCKABLE_FUNCTION(, int, VECTOR_push_back, VECTOR_HANDLE, handle, const void*, elements, size_t, numElements);
 
-/* removal */
+    /* removal */
 MOCKABLE_FUNCTION(, void, VECTOR_erase, VECTOR_HANDLE, handle, void*, elements, size_t, numElements);
 MOCKABLE_FUNCTION(, void, VECTOR_clear, VECTOR_HANDLE, handle);
 
-/* access */
+    /* access */
 MOCKABLE_FUNCTION(, void*, VECTOR_element, VECTOR_HANDLE, handle, size_t, index);
 MOCKABLE_FUNCTION(, void*, VECTOR_front, VECTOR_HANDLE, handle);
 MOCKABLE_FUNCTION(, void*, VECTOR_back, VECTOR_HANDLE, handle);
 MOCKABLE_FUNCTION(, void*, VECTOR_find_if, VECTOR_HANDLE, handle, PREDICATE_FUNCTION, pred, const void*, value);
 
-/* capacity */
+    /* capacity */
 MOCKABLE_FUNCTION(, size_t, VECTOR_size, VECTOR_HANDLE, handle);
-
 #ifdef __cplusplus
 }
 #endif

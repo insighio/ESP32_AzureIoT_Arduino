@@ -4,9 +4,11 @@
 #ifndef MQTT_MESSAGE_H
 #define MQTT_MESSAGE_H
 
+#include "az_iot/umqtt/inc/azure_umqtt_c/mqttconst.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/umock_c_prod.h"
+
 #ifdef __cplusplus
 #include <cstdint>
-#include <cstdbool>
 #include <cstddef>
 extern "C" {
 #else
@@ -14,9 +16,6 @@ extern "C" {
 #include <stdbool.h>
 #include <stddef.h>
 #endif // __cplusplus
-
-#include "mqttconst.h"
-#include "az_iot/c-utility/inc/azure_c_shared_utility/umock_c_prod.h"
 
 typedef struct MQTT_MESSAGE_TAG* MQTT_MESSAGE_HANDLE;
 
@@ -27,6 +26,16 @@ MOCKABLE_FUNCTION(,MQTT_MESSAGE_HANDLE, mqttmessage_clone, MQTT_MESSAGE_HANDLE, 
 
 MOCKABLE_FUNCTION(, uint16_t, mqttmessage_getPacketId, MQTT_MESSAGE_HANDLE, handle);
 MOCKABLE_FUNCTION(, const char*, mqttmessage_getTopicName, MQTT_MESSAGE_HANDLE, handle);
+
+/*
+*    @brief    Gets the individual names of the MQTT topic levels, in the original order.
+*    @param    handle    Handle to the MQTT message.
+*    @param    levels    Pointer the variable where to store the level names.
+*    @param    count     Number of levels in the topic name.
+*    @return   return    Zero if no failures occur, or non-zero otherwise.
+*/
+MOCKABLE_FUNCTION(, int, mqttmessage_getTopicLevels, MQTT_MESSAGE_HANDLE, handle, char***, levels, size_t*, count);
+
 MOCKABLE_FUNCTION(, QOS_VALUE, mqttmessage_getQosType, MQTT_MESSAGE_HANDLE, handle);
 MOCKABLE_FUNCTION(, bool, mqttmessage_getIsDuplicateMsg, MQTT_MESSAGE_HANDLE, handle);
 MOCKABLE_FUNCTION(, bool, mqttmessage_getIsRetained, MQTT_MESSAGE_HANDLE, handle);

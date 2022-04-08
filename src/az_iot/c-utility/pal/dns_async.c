@@ -8,9 +8,9 @@
 
 // This file is OS-specific, and is identified by setting include directories
 // in the project
-#include "./inc/socket_async_os.h"
+#include "az_iot/c-utility/pal/inc/socket_async_os.h"
 
-#include "./inc/dns_async.h"
+#include "az_iot/c-utility/pal/inc/dns_async.h"
 #include "az_iot/c-utility/inc/azure_c_shared_utility/gballoc.h"
 #include "az_iot/c-utility/inc/azure_c_shared_utility/crt_abstractions.h"
 #include "az_iot/c-utility/inc/azure_c_shared_utility/xlogging.h"

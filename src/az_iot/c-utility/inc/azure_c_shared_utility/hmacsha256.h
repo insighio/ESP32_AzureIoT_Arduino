@@ -4,9 +4,15 @@
 #ifndef HMACSHA256_H
 #define HMACSHA256_H
 
-#include "macro_utils.h"
-#include "buffer_.h"
-#include "umock_c_prod.h"
+#ifdef __cplusplus
+#include <cstddef>
+#else
+#include <stddef.h>
+#endif
+
+#include "az_iot/c-utility/inc/azure_c_shared_utility/macro_utils.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/buffer_.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/umock_c_prod.h"
 
 #ifdef __cplusplus
 extern "C" {

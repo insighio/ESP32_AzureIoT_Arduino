@@ -4,12 +4,13 @@
 #ifndef CONNECTION_STRING_PARSER_H
 #define CONNECTION_STRING_PARSER_H
 
-#include "umock_c_prod.h"
-#include "map.h" 
-#include "strings.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/map.h" 
+#include "az_iot/c-utility/inc/azure_c_shared_utility/az_strings.h"
+
+#include "az_iot/c-utility/inc/azure_c_shared_utility/umock_c_prod.h"
 
 #ifdef __cplusplus
-extern "C" 
+extern "C"
 {
 #endif
 

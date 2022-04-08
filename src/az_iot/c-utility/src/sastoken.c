@@ -8,9 +8,9 @@
 #include "az_iot/c-utility/inc/azure_c_shared_utility/sastoken.h"
 #include "az_iot/c-utility/inc/azure_c_shared_utility/urlencode.h"
 #include "az_iot/c-utility/inc/azure_c_shared_utility/hmacsha256.h"
-#include "az_iot/c-utility/inc/azure_c_shared_utility/base64.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/azure_base64.h"
 #include "az_iot/c-utility/inc/azure_c_shared_utility/agenttime.h"
-#include "az_iot/c-utility/inc/azure_c_shared_utility/strings.h"
+#include "az_iot/c-utility/inc/azure_c_shared_utility/az_strings.h"
 #include "az_iot/c-utility/inc/azure_c_shared_utility/buffer_.h"
 #include "az_iot/c-utility/inc/azure_c_shared_utility/xlogging.h"
 #include "az_iot/c-utility/inc/azure_c_shared_utility/crt_abstractions.h"
@@ -23,7 +23,7 @@ static double getExpiryValue(const char* expiryASCII)
     {
         if (expiryASCII[i] >= '0' && expiryASCII[i] <= '9')
         {
-            value = value * 10 + (expiryASCII[i] - '0');
+            value = value * 10 + ((double)expiryASCII[i] - (double)'0');
         }
         else
         {
@@ -165,7 +165,7 @@ bool SASToken_Validate(STRING_HANDLE sasToken)
                     memset(expiryASCII, 0, seStop - seStart + 1);
                     for (i = seStart; i < seStop; i++)
                     {
-                        // The se contains the expiration values, if a & token is encountered then 
+                        // The se contains the expiration values, if a & token is encountered then
                         // the se field is complete.
                         if (sasTokenArray[i] == '&')
                         {
@@ -202,7 +202,7 @@ bool SASToken_Validate(STRING_HANDLE sasToken)
     return result;
 }
 
-static STRING_HANDLE construct_sas_token(const char* key, const char* scope, const char* keyname, size_t expiry)
+static STRING_HANDLE construct_sas_token(const char* key, const char* scope, const char* keyname, uint64_t expiry)
 {
     STRING_HANDLE result;
 
@@ -211,7 +211,7 @@ static STRING_HANDLE construct_sas_token(const char* key, const char* scope, con
     BUFFER_HANDLE decodedKey;
 
     /*Codes_SRS_SASTOKEN_06_029: [The key parameter is decoded from base64.]*/
-    if ((decodedKey = Base64_Decoder(key)) == NULL)
+    if ((decodedKey = Azure_Base64_Decode(key)) == NULL)
     {
         /*Codes_SRS_SASTOKEN_06_030: [If there is an error in the decoding then SASToken_Create shall return NULL.]*/
         LogError("Unable to decode the key for generating the SAS.");
@@ -220,7 +220,7 @@ static STRING_HANDLE construct_sas_token(const char* key, const char* scope, con
     else
     {
         /*Codes_SRS_SASTOKEN_06_026: [If the conversion to string form fails for any reason then SASToken_Create shall return NULL.]*/
-        if (size_tToString(tokenExpirationTime, sizeof(tokenExpirationTime), expiry) != 0)
+        if (uint64_tToString(tokenExpirationTime, sizeof(tokenExpirationTime), expiry) != 0)
         {
             LogError("For some reason converting seconds to a string failed.  No SAS can be generated.");
             result = NULL;
@@ -268,10 +268,10 @@ static STRING_HANDLE construct_sas_token(const char* key, const char* scope, con
                     /*Codes_SRS_SASTOKEN_06_019: [The string urlEncodedSignature shall be appended to result.]*/
                     /*Codes_SRS_SASTOKEN_06_020: [The string "&se=" shall be appended to result.]*/
                     /*Codes_SRS_SASTOKEN_06_021: [tokenExpirationTime is appended to result.]*/
-                    /*Codes_SRS_SASTOKEN_06_022: [The string "&skn=" is appended to result.]*/
-                    /*Codes_SRS_SASTOKEN_06_023: [The argument keyName is appended to result.]*/
+                    /*Codes_SRS_SASTOKEN_06_022: [If keyName is non-NULL, the string "&skn=" is appended to result.]*/
+                    /*Codes_SRS_SASTOKEN_06_023: [If keyName is non-NULL, the argument keyName is appended to result.]*/
                     if ((HMACSHA256_ComputeHash(outBuf, outLen, inBuf, inLen, hash) != HMACSHA256_OK) ||
-                        ((base64Signature = Base64_Encoder(hash)) == NULL) ||
+                        ((base64Signature = Azure_Base64_Encode(hash)) == NULL) ||
                         ((urlEncodedSignature = URL_Encode(base64Signature)) == NULL) ||
                         (STRING_copy(result, "SharedAccessSignature sr=") != 0) ||
                         (STRING_concat(result, scope) != 0) ||
@@ -279,8 +279,8 @@ static STRING_HANDLE construct_sas_token(const char* key, const char* scope, con
                         (STRING_concat_with_STRING(result, urlEncodedSignature) != 0) ||
                         (STRING_concat(result, "&se=") != 0) ||
                         (STRING_concat(result, tokenExpirationTime) != 0) ||
-                        (STRING_concat(result, "&skn=") != 0) ||
-                        (STRING_concat(result, keyname) != 0))
+                        ((keyname != NULL) && (STRING_concat(result, "&skn=") != 0)) ||
+                        ((keyname != NULL) && (STRING_concat(result, keyname) != 0)))
                     {
                         LogError("Unable to build the SAS token.");
                         STRING_delete(result);
@@ -302,16 +302,15 @@ static STRING_HANDLE construct_sas_token(const char* key, const char* scope, con
     return result;
 }
 
-STRING_HANDLE SASToken_Create(STRING_HANDLE key, STRING_HANDLE scope, STRING_HANDLE keyName, size_t expiry)
+STRING_HANDLE SASToken_Create(STRING_HANDLE key, STRING_HANDLE scope, STRING_HANDLE keyName, uint64_t expiry)
 {
     STRING_HANDLE result;
 
     /*Codes_SRS_SASTOKEN_06_001: [If key is NULL then SASToken_Create shall return NULL.]*/
     /*Codes_SRS_SASTOKEN_06_003: [If scope is NULL then SASToken_Create shall return NULL.]*/
-    /*Codes_SRS_SASTOKEN_06_007: [If keyName is NULL then SASToken_Create shall return NULL.]*/
+    /*Codes_SRS_SASTOKEN_06_007: [keyName is optional and can be set to NULL.]*/
     if ((key == NULL) ||
-        (scope == NULL) ||
-        (keyName == NULL))
+        (scope == NULL))
     {
         LogError("Invalid Parameter to SASToken_Create. handle key: %p, handle scope: %p, handle keyName: %p", key, scope, keyName);
         result = NULL;
@@ -326,16 +325,15 @@ STRING_HANDLE SASToken_Create(STRING_HANDLE key, STRING_HANDLE scope, STRING_HAN
     return result;
 }
 
-STRING_HANDLE SASToken_CreateString(const char* key, const char* scope, const char* keyName, size_t expiry)
+STRING_HANDLE SASToken_CreateString(const char* key, const char* scope, const char* keyName, uint64_t expiry)
 {
     STRING_HANDLE result;
 
     /*Codes_SRS_SASTOKEN_06_001: [If key is NULL then SASToken_Create shall return NULL.]*/
     /*Codes_SRS_SASTOKEN_06_003: [If scope is NULL then SASToken_Create shall return NULL.]*/
-    /*Codes_SRS_SASTOKEN_06_007: [If keyName is NULL then SASToken_Create shall return NULL.]*/
+    /*Codes_SRS_SASTOKEN_06_007: [keyName is optional and can be set to NULL.]*/
     if ((key == NULL) ||
-        (scope == NULL) ||
-        (keyName == NULL))
+        (scope == NULL))
     {
         LogError("Invalid Parameter to SASToken_Create. handle key: %p, handle scope: %p, handle keyName: %p", key, scope, keyName);
         result = NULL;

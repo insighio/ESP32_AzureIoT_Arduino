@@ -8,9 +8,9 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "../inc/socket_async.h"
-#include "../inc/dns_async.h"
-#include "../inc/tlsio_pal.h"
+#include "az_iot/c-utility/pal/inc/socket_async.h"
+#include "az_iot/c-utility/pal/inc/dns_async.h"
+#include "az_iot/c-utility/pal/inc/tlsio_pal.h"
 #include "az_iot/c-utility/inc/azure_c_shared_utility/gballoc.h"
 #include "az_iot/c-utility/inc/azure_c_shared_utility/xlogging.h"
 #include "az_iot/c-utility/inc/azure_c_shared_utility/agenttime.h"

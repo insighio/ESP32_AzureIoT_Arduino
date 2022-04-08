@@ -4,16 +4,16 @@
 #ifndef CONSOLELOGGER_H
 #define CONSOLELOGGER_H
 
+#include "az_iot/c-utility/inc/azure_c_shared_utility/xlogging.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#include "xlogging.h"
+    void consolelogger_log(LOG_CATEGORY log_category, const char* file, const char* func, int line, unsigned int options, const char* format, ...);
 
-    extern void consolelogger_log(LOG_CATEGORY log_category, const char* file, const char* func, int line, unsigned int options, const char* format, ...);
-
-#if (defined(_MSC_VER)) && (!(defined WINCE))
-    extern void consolelogger_log_with_GetLastError(const char* file, const char* func, int line, const char* format, ...);
+#if (defined(_MSC_VER))
+    void consolelogger_log_with_GetLastError(const char* file, const char* func, int line, const char* format, ...);
 #endif
 
 #ifdef __cplusplus

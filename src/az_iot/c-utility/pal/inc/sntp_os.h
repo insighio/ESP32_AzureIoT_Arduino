@@ -11,6 +11,6 @@
 #ifndef LWIP_SNTP_OS_H
 #define LWIP_SNTP_OS_H
 
-#include "apps/sntp/sntp.h"
+#include "az_iot/c-utility/pal/inc/sntp.h"
 
 #endif // LWIP_SNTP_OS_H
